@@ -191,8 +191,7 @@ UPROGS=\
 	$U/_sleep\
 	$U/_pingpong\
 	$U/_primes\
-
->>>>>>> util_primes
+	$U/_xargs\
 
 
 
