@@ -23,3 +23,7 @@ ph
 barrier
 /lab-*.json
 .DS_Store
+
+# Malek Custom
+.gdb_history
+core
