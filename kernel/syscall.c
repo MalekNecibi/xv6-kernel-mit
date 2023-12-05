@@ -131,7 +131,6 @@ static uint64 (*syscalls[])(void) = {
 };
 
 // TODO : use this lookup table in syscall() for trace
-/*
 // An array mapping syscall numbers from syscall.h
 // to the function name for of that system call.
 static char* syscall_names[] = {
@@ -158,7 +157,6 @@ static char* syscall_names[] = {
 [SYS_close]   "close",
 [SYS_trace]   "trace",
 };
-*/
 
 void
 syscall(void)
@@ -173,9 +171,8 @@ syscall(void)
     
     p->trapframe->a0 = syscalls[num]();
     
-    if (1 == p->tracemask >> num) {
-        printf("%d: syscall %d -> %d\n", p->pid, num, p->trapframe->a0);
-    
+    if (1 == ((p->tracemask >> num) & 1)) {
+        printf("%d: syscall %s -> %d\n", p->pid, syscall_names[num], p->trapframe->a0);
     }
     
     

@@ -104,5 +104,5 @@ sys_trace(void)
     return -1;
   }
   myproc()->tracemask = mask;
-  return myproc()->tracemask;
+  return 0;
 }
