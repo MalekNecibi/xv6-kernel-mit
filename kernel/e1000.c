@@ -95,26 +95,44 @@ e1000_init(uint32 *xregs)
 int
 e1000_transmit(struct mbuf *m)
 {
-  //
-  // Your code here.
-  //
-  // the mbuf contains an ethernet frame; program it into
-  // the TX descriptor ring so that the e1000 sends it. Stash
-  // a pointer so that it can be freed after sending.
-  //
-  
+  acquire(&e1000_lock);
+  __sync_synchronize();
+
+  // get the tx ring index that is expecting the next packet (transmit desciptor)
+  int td = regs[E1000_TDT];
+
+  // is ring overflowing with unsent packets?
+  if (!(E1000_TXD_STAT_DD == (tx_ring[td].status & E1000_TXD_STAT_DD))) {
+    release(&e1000_lock);
+    return -1;
+  }
+
+  // wipe old data transmitted from our ring slot
+  memset(&tx_ring[td], 0, sizeof(tx_ring[td]));
+  if (0 != tx_mbufs[td]) {
+    // but only if there's garbage data to free
+    mbuffree(tx_mbufs[td]);
+  }
+
+  // fill the descriptor
+  tx_ring[td].addr = (uint64)m->head;
+  tx_ring[td].length = m->len;
+  tx_ring[td].cmd = E1000_TXD_CMD_RS | E1000_TXD_CMD_EOP;
+
+  // stash a pointer to the mbuf for later freeing
+  tx_mbufs[td] = m;
+
+  // update new tx ring position
+  regs[E1000_TDT] = (regs[E1000_TDT] + 1) % TX_RING_SIZE;
+
+  release(&e1000_lock);
   return 0;
 }
 
 static void
 e1000_recv(void)
 {
-  //
-  // Your code here.
-  //
-  // Check for packets that have arrived from the e1000
-  // Create and deliver an mbuf for each packet (using net_rx()).
-  //
+    printf("e1000_recv\n");
 }
 
 void
