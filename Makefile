@@ -268,10 +268,13 @@ fs.img: mkfs/mkfs README $(UEXTRA) $(UPROGS)
 clean:
 	rm -rf *.tex *.dvi *.idx *.aux *.log *.ind *.ilg *.dSYM *.zip *.pcap \
 	*/*.o */*.d */*.asm */*.sym \
-	$U/initcode $U/initcode.out $U/usys.S $U/_* \
-	$K/kernel \
-	mkfs/mkfs fs.img .gdbinit __pycache__ xv6.out* \
-	ph barrier
+    $U/initcode $U/initcode.out $U/usys.S $U/_* \
+    $K/kernel \
+    mkfs/mkfs fs.img .gdbinit __pycache__ xv6.out* \
+	$U/usys.S \
+    $(UPROGS) \
+	*.zip \
+    ph barrier
 
 # try to generate a unique GDB port
 GDBPORT = $(shell expr `id -u` % 5000 + 25000)
