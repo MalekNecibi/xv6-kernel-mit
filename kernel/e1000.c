@@ -8,6 +8,9 @@
 #include "e1000_dev.h"
 #include "net.h"
 
+// Test if the bit(s) corresponding to mask are all set in reg
+#define BITMASK_CHECK(reg, mask) ((mask) == ((reg) & (mask)))
+
 #define TX_RING_SIZE 16
 static struct tx_desc tx_ring[TX_RING_SIZE] __attribute__((aligned(16)));
 static struct mbuf *tx_mbufs[TX_RING_SIZE];
@@ -96,13 +99,13 @@ int
 e1000_transmit(struct mbuf *m)
 {
   acquire(&e1000_lock);
-  __sync_synchronize();
 
-  // get the tx ring index that is expecting the next packet (transmit desciptor)
+  // get the tx ring index that is expecting the next packet (transmit descriptor)
   int td = regs[E1000_TDT];
 
   // is ring overflowing with unsent packets?
-  if (!(E1000_TXD_STAT_DD == (tx_ring[td].status & E1000_TXD_STAT_DD))) {
+  // hardware sets mask when descriptor is ready for software
+  if (! BITMASK_CHECK(tx_ring[td].status, E1000_TXD_STAT_DD)) {
     release(&e1000_lock);
     return -1;
   }
@@ -132,7 +135,49 @@ e1000_transmit(struct mbuf *m)
 static void
 e1000_recv(void)
 {
-    printf("e1000_recv\n");
+  acquire(&e1000_lock);
+  
+  // get the rx_ring index that holds a new packet (receive descriptor)
+  int rd = (regs[E1000_RDT] + 1) % RX_RING_SIZE;
+
+  // do we have any new packets to process
+  // hardware sets mask when descriptor is ready for software
+  while (BITMASK_CHECK(rx_ring[rd].status, E1000_RXD_STAT_DD)) {
+    
+    // potentially redundant, but safer
+    if (!rx_mbufs[rd]) {
+      panic("e1000");
+    }
+    
+    // attach length info to mbuf
+    rx_mbufs[rd]->len = rx_ring[rd].length;
+    
+    // give the mbuf to the network stack
+    // release lock so e1000_transmit is not blocked
+    release(&e1000_lock);
+    net_rx(rx_mbufs[rd]);
+    acquire(&e1000_lock);
+    
+    // TODO: ensure the mbuf was freed by the network stack?
+    
+    // prep new mbuf for hardware
+    rx_mbufs[rd] = mbufalloc(0);
+    if (!rx_mbufs[rd]) {
+      panic("e1000");
+    }
+    
+    // prep descriptor so hardware can reuse the ring slot
+    memset(&rx_ring[rd], 0, sizeof(rx_ring[rd]));
+    rx_ring[rd].addr = (uint64) rx_mbufs[rd]->head;
+    
+    // tell hardware that software is done with this descriptor
+    regs[E1000_RDT] = rd;
+    
+    // prepare to check the next ring slot
+    rd = (rd + 1) % RX_RING_SIZE;
+  }
+  
+  release(&e1000_lock);
 }
 
 void
