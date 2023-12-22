@@ -188,6 +188,7 @@ UPROGS=\
 	$U/_grind\
 	$U/_wc\
 	$U/_zombie\
+	$U/_trace\
 
 
 
@@ -271,7 +272,6 @@ clean:
     $U/initcode $U/initcode.out $U/usys.S $U/_* \
     $K/kernel \
     mkfs/mkfs fs.img .gdbinit __pycache__ xv6.out* \
-	$U/usys.S \
     $(UPROGS) \
 	*.zip \
     ph barrier

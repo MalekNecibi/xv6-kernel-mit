@@ -104,5 +104,6 @@ struct proc {
   struct file *ofile[NOFILE];  // Open files
   struct inode *cwd;           // Current directory
   char name[16];               // Process name (debugging)
-  struct usyscall *usyscall;    // User System Call
+  struct usyscall *usyscall;   // User System Call
+  uint64 tracemask;            // syscall bitmask for sys_trace
 };
