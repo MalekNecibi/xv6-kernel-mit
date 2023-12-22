@@ -2,51 +2,62 @@
 #include "kernel/stat.h"
 #include "user/user.h"
 
-#define N 5
-char buf[N];
+int main(int argc, char* argv[]) {
 
-void
-pong(int *parent_to_child, int *child_to_parent) {
-  if (read(parent_to_child[0], buf, N) < 0) {
-    printf("read failed\n");
-  }
-  printf("%d: received %s\n", getpid(), buf);
-  if (write(child_to_parent[1], "pong", 4) != 4) {
-    printf("write failed\n");
-  }
-}
+    int p0[2];  // child  -> parent
+    int p1[2];  // parent -> child
+    int input;
+    int output;
+    char buf[2] = {0};
 
-void
-ping(int *parent_to_child, int *child_to_parent) {
-  
-  if (write(parent_to_child[1], "ping", 4) != 4) {
-    printf("write failed\n");
-  }
-  if (read(child_to_parent[0], buf, N) < 0) {
-    printf("read failed\n");
-  }
-  printf("%d: received %s\n", getpid(), buf);
-}
+    // p0[0] = parent stdin
+    // p0[1] = child stdout
+    // p1[0] = child stdin
+    // p1[1] = parent stdout
+    pipe(p0);
+    pipe(p1);
 
-int
-main(int argc, char *argv[])
-{
-  int parent_to_child[2];
-  int child_to_parent[2];
+    int pid = fork();
+    if (pid > 0) {          // Parent Process
+        // indicate parent's input and output
+        input  = p0[0];
+        output = p1[1];
 
-  int pid;
+        // send byte to child
+        write(output, "A", 1);
 
-  if (pipe(parent_to_child) < 0 || pipe(child_to_parent) < 0) {
-    printf("pipe failed\n");
-  }
-  if ((pid = fork()) < 0) {
-    printf("fork failed\n");
-  }
-  if (pid == 0) {
-    pong(parent_to_child, child_to_parent);
-  } else {
-    ping(parent_to_child, child_to_parent);
-  }
-  
-  exit(0);
+        // receive byte back from child
+        if (1 != read(input, buf, 1)) {
+            printf("ERROR: failed to read bytes from parent\n");
+            exit(1);
+        }
+        printf("%d: received pong\n", getpid());
+
+        exit(0);
+
+
+    } else if (0 == pid) {// Child Process
+        // indicate child's input and output pipes
+        input  = p1[0];
+        output = p0[1];
+
+        // receive byte from parent
+        if (1 != read(input, buf, 1)) {
+            printf("ERROR: failed to read bytes from parent\n");
+            exit(1);
+        }
+        printf("%d: received ping\n");
+
+        // send byte back to parent pipe
+        write(output, buf, 1);
+
+        exit(0);
+
+
+    } else {
+        printf("fork error\n");
+        exit(1);
+    }
+
+    exit(0);
 }
